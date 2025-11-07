@@ -30,7 +30,7 @@ module locked_object::tests {
         };
         
         test_scenario::next_tx(scenario_val, ADMIN);
-        let mut locked_obj = test_scenario::take_shared<LockedObject<SUI>>(scenario_val);
+        let locked_obj = test_scenario::take_shared<LockedObject<SUI>>(scenario_val);
         
         // 验证锁仓对象存在
         let (current_balance, total_deposited, total_withdrawn) = core::get_balances(&locked_obj);

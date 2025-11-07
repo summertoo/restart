@@ -99,7 +99,7 @@ module locked_object::utils {
 
     /// 验证金额是否在合理范围内
     public fun is_valid_amount(amount: u64): bool {
-        amount > 0 && amount <= 1000000000000000 // 最大1e15 MIST
+        amount > 0 && amount <= 1000000_000_000_000 // 最大1e15 MIST
     }
 
     /// 验证基点是否在有效范围内
