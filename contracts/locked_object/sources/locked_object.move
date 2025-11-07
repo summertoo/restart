@@ -1,14 +1,10 @@
-#[allow(unused_use,duplicate_alias,unused_const,unused_variable,lint(self_transfer))]
+#[allow(unused_use,unused_const,unused_variable,lint(self_transfer))]
 module locked_object::core {
-    use sui::object::{Self, UID, ID};
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
     use sui::event;
     use std::string::String;
-    use std::vector;
     use locked_object::utils;
     use locked_object::types::{Self, LockRules, DepositRecord};
 
