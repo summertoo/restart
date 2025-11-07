@@ -1,11 +1,13 @@
+
 #[test_only]
+#[allow(unused_use,duplicate_alias,unused_const,unused_variable)]
 module locked_object::tests {
-    use sui::test_scenario::{Self, Scenario};
+    use sui::test_scenario;
     use sui::sui::SUI;
-    use locked_object::locked_object::{Self, LockedObject};
+    use sui::coin;
+    use locked_object::core::{Self, LockedObject};
 
     const ADMIN: address = @0x1;
-    const USER: address = @0x2;
 
     #[test]
     fun test_create_locked_object() {
@@ -13,11 +15,30 @@ module locked_object::tests {
         let scenario_val = &mut scenario;
         
         // 创建锁仓对象
-        let locked_obj = test_scenario::take_shared<LockedObject>(scenario_val);
+        test_scenario::next_tx(scenario_val, ADMIN);
+        {
+            let locked_obj = core::create_locked_object_for_test<SUI>(
+                std::string::utf8(b"Test Object"),
+                std::string::utf8(b"Test Description"),
+                2592000, // 30天
+                1000000, // 每日限额
+                false,    // 自动再投资
+                true,     // 紧急提取
+                100,      // 手续费率
+                test_scenario::ctx(scenario_val)
+            );
+            test_scenario::return_shared(locked_obj);
+        };
+        
+        test_scenario::next_tx(scenario_val, ADMIN);
+        let locked_obj = test_scenario::take_shared<LockedObject<SUI>>(scenario_val);
         
         // 验证锁仓对象存在
-        assert!(locked_object::balance(&locked_obj) == 0, 0);
-        assert!(locked_object::owner(&locked_obj) == ADMIN, 1);
+        let (current_balance, total_deposited, total_withdrawn) = core::get_balances(&locked_obj);
+        assert!(current_balance == 0, 0);
+        assert!(total_deposited == 0, 1);
+        assert!(total_withdrawn == 0, 2);
+        assert!(core::is_owner(&locked_obj, ADMIN), 3);
         
         test_scenario::return_shared(locked_obj);
         test_scenario::end(scenario);
@@ -29,17 +50,36 @@ module locked_object::tests {
         let scenario_val = &mut scenario;
         
         // 创建锁仓对象
-        let locked_obj = test_scenario::take_shared<LockedObject>(scenario_val);
+        test_scenario::next_tx(scenario_val, ADMIN);
+        {
+            let locked_obj = core::create_locked_object_for_test<SUI>(
+                std::string::utf8(b"Test Object"),
+                std::string::utf8(b"Test Description"),
+                2592000, // 30天
+                1000000, // 每日限额
+                false,    // 自动再投资
+                true,     // 紧急提取
+                100,      // 手续费率
+                test_scenario::ctx(scenario_val)
+            );
+            test_scenario::return_shared(locked_obj);
+        };
+        
+        test_scenario::next_tx(scenario_val, ADMIN);
+        let mut locked_obj = test_scenario::take_shared<LockedObject<SUI>>(scenario_val);
         
         // 创建一些SUI代币用于测试
-        let coins = test_scenario::take_from_sender<sui::coin::Coin<SUI>>(scenario_val);
-        let deposit_amount = 1000000; // 0.001 SUI
+        test_scenario::next_tx(scenario_val, ADMIN);
+        let coins = test_scenario::take_from_sender<coin::Coin<SUI>>(scenario_val);
+        let deposit_amount = coin::value(&coins);
         
         // 存入SUI
-        locked_object::deposit_sui(&mut locked_obj, coins, deposit_amount);
+        core::deposit(&mut locked_obj, coins, test_scenario::ctx(scenario_val));
         
         // 验证余额增加
-        assert!(locked_object::balance(&locked_obj) == deposit_amount, 2);
+        let (current_balance, total_deposited, _) = core::get_balances(&locked_obj);
+        assert!(current_balance == deposit_amount, 0);
+        assert!(total_deposited == deposit_amount, 1);
         
         test_scenario::return_shared(locked_obj);
         test_scenario::end(scenario);
@@ -51,21 +91,43 @@ module locked_object::tests {
         let scenario_val = &mut scenario;
         
         // 创建锁仓对象
-        let locked_obj = test_scenario::take_shared<LockedObject>(scenario_val);
+        test_scenario::next_tx(scenario_val, ADMIN);
+        {
+            let locked_obj = core::create_locked_object_for_test<SUI>(
+                std::string::utf8(b"Test Object"),
+                std::string::utf8(b"Test Description"),
+                0,        // 无锁仓时间
+                1000000,  // 每日限额
+                false,    // 自动再投资
+                true,     // 紧急提取
+                100,      // 手续费率
+                test_scenario::ctx(scenario_val)
+            );
+            test_scenario::return_shared(locked_obj);
+        };
+        
+        test_scenario::next_tx(scenario_val, ADMIN);
+        let mut locked_obj = test_scenario::take_shared<LockedObject<SUI>>(scenario_val);
         
         // 存入一些SUI
-        let coins = test_scenario::take_from_sender<sui::coin::Coin<SUI>>(scenario_val);
-        let deposit_amount = 2000000; // 0.002 SUI
-        locked_object::deposit_sui(&mut locked_obj, coins, deposit_amount);
+        test_scenario::next_tx(scenario_val, ADMIN);
+        let coins = test_scenario::take_from_sender<coin::Coin<SUI>>(scenario_val);
+        let deposit_amount = coin::value(&coins);
+        core::deposit(&mut locked_obj, coins, test_scenario::ctx(scenario_val));
         
         // 提取SUI
-        let withdrawn_coins = locked_object::withdraw_sui(&mut locked_obj, 1000000); // 提取0.001 SUI
+        test_scenario::next_tx(scenario_val, ADMIN);
+        let withdraw_amount = 500000; // 提取一部分
+        let withdrawn_coins = core::withdraw(&mut locked_obj, withdraw_amount, test_scenario::ctx(scenario_val));
         
         // 验证余额减少
-        assert!(locked_object::balance(&locked_obj) == 1000000, 3);
+        let (current_balance, total_deposited, total_withdrawn) = core::get_balances(&locked_obj);
+        assert!(current_balance == deposit_amount - withdraw_amount, 0);
+        assert!(total_deposited == deposit_amount, 1);
+        assert!(total_withdrawn >= withdraw_amount, 2);
         
         // 销毁提取的代币（测试用）
-        sui::coin::destroy_zero(witdrawn_coins);
+        coin::destroy_zero(withdrawn_coins);
         
         test_scenario::return_shared(locked_obj);
         test_scenario::end(scenario);

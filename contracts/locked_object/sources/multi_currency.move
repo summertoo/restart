@@ -15,7 +15,7 @@ module locked_object::multi_currency {
     public enum SupportedCoin has copy, drop, store {
         SUI,
         USDC,
-        USDT,
+        USDT
     }
 
     /// 代币元数据

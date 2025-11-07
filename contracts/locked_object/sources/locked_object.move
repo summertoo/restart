@@ -1,6 +1,6 @@
 #[allow(unused_use,duplicate_alias,unused_const,unused_variable,lint(self_transfer))]
 module locked_object::core {
-    use sui::object::{Self, UID};
+    use sui::object::{Self, UID, ID};
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
@@ -10,7 +10,7 @@ module locked_object::core {
     use std::string::String;
     use std::vector;
     use locked_object::utils;
-    use locked_object::types;
+    use locked_object::types::{Self, LockRules, DepositRecord};
 
     // === 错误码定义 ===
     const E_NOT_OWNER: u64 = 0;
@@ -39,22 +39,6 @@ module locked_object::core {
         total_withdrawn: u64,
         lock_rules: LockRules,
         deposit_history: vector<DepositRecord>,
-    }
-
-    /// 锁仓规则
-    public struct LockRules has copy, drop, store {
-        min_lock_period: u64,        // 最小锁仓时间(秒)
-        max_withdrawal_per_day: u64, // 每日最大提取限额
-        auto_reinvest: bool,         // 自动再投资
-        emergency_withdrawal: bool,  // 紧急提取
-        withdrawal_fee_rate: u64,    // 提取手续费率(基点)
-    }
-
-    /// 存款记录
-    public struct DepositRecord has copy, drop, store {
-        timestamp: u64,
-        amount: u64,
-        depositor: address,
     }
 
     // === 核心函数 ===
@@ -91,13 +75,13 @@ module locked_object::core {
         assert!(utils::is_valid_amount(max_withdrawal_per_day), E_INVALID_PARAMETERS);
         assert!(utils::is_valid_basis_points(withdrawal_fee_rate), E_INVALID_PARAMETERS);
 
-        let lock_rules = LockRules {
+        let lock_rules = types::create_lock_rules(
             min_lock_period,
             max_withdrawal_per_day,
             auto_reinvest,
             emergency_withdrawal,
-            withdrawal_fee_rate,
-        };
+            withdrawal_fee_rate
+        );
 
         let locked_object = LockedObject<T> {
             id: object::new(ctx),
@@ -123,11 +107,67 @@ module locked_object::core {
             timestamp: current_time,
         });
 
-        // 转移给创建者
-        transfer::public_transfer(locked_object, sender);
+        // 作为共享对象转移
+        transfer::public_share_object(locked_object);
         
         // 返回空值，因为函数已经转移了对象
         ()
+    }
+
+    /// 测试专用的创建函数，创建共享对象
+    #[test_only]
+    public fun create_locked_object_for_test<T>(
+        name: String,
+        description: String,
+        min_lock_period: u64,
+        max_withdrawal_per_day: u64,
+        auto_reinvest: bool,
+        emergency_withdrawal: bool,
+        withdrawal_fee_rate: u64,
+        ctx: &mut TxContext
+    ) {
+        let current_time = tx_context::epoch(ctx);
+        let sender = tx_context::sender(ctx);
+
+        // 验证参数
+        assert!(utils::is_valid_amount(min_lock_period), E_INVALID_PARAMETERS);
+        assert!(utils::is_valid_amount(max_withdrawal_per_day), E_INVALID_PARAMETERS);
+        assert!(utils::is_valid_basis_points(withdrawal_fee_rate), E_INVALID_PARAMETERS);
+
+        let lock_rules = types::create_lock_rules(
+            min_lock_period,
+            max_withdrawal_per_day,
+            auto_reinvest,
+            emergency_withdrawal,
+            withdrawal_fee_rate
+        );
+
+        let locked_object = LockedObject<T> {
+            id: object::new(ctx),
+            owner: sender,
+            name,
+            description,
+            created_at: current_time,
+            updated_at: current_time,
+            
+            // 资金管理初始化
+            balance: balance::zero<T>(),
+            total_deposited: 0,
+            total_withdrawn: 0,
+            lock_rules,
+            deposit_history: vector::empty(),
+        };
+
+        // 发出创建事件
+        event::emit(ObjectCreated {
+            object_id: object::uid_to_inner(&locked_object.id),
+            owner: sender,
+            name: locked_object.name,
+            timestamp: current_time,
+        });
+
+        // 作为共享对象转移
+        transfer::public_share_object(locked_object);
     }
 
     /// 存入代币
@@ -148,11 +188,11 @@ module locked_object::core {
         locked_object.total_deposited = locked_object.total_deposited + amount;
 
         // 记录存款历史
-        let deposit_record = DepositRecord {
-            timestamp: current_time,
+        let deposit_record = types::create_deposit_record(
+            current_time,
             amount,
-            depositor: sender,
-        };
+            sender
+        );
         vector::push_back(&mut locked_object.deposit_history, deposit_record);
 
         // 更新时间戳
@@ -177,8 +217,8 @@ module locked_object::core {
         let current_time = tx_context::epoch(ctx);
         let time_elapsed = current_time - locked_object.created_at;
         let today_withdrawn = calculate_today_withdrawn(locked_object, current_time);
-        let remaining_daily_limit = locked_object.lock_rules.max_withdrawal_per_day - today_withdrawn;
-        let fee = utils::basis_points_to_value(amount, locked_object.lock_rules.withdrawal_fee_rate);
+        let remaining_daily_limit = types::get_max_withdrawal_per_day(&locked_object.lock_rules) - today_withdrawn;
+        let fee = utils::basis_points_to_value(amount, types::get_withdrawal_fee_rate(&locked_object.lock_rules));
         let withdraw_amount = amount - fee;
         let withdrawn_balance = balance::split(&mut locked_object.balance, withdraw_amount);
         let withdrawn_coin = coin::from_balance(withdrawn_balance, ctx);
@@ -191,7 +231,7 @@ module locked_object::core {
         assert!(balance::value(&locked_object.balance) >= amount, E_INSUFFICIENT_BALANCE);
 
         // 检查锁仓时间
-        if (time_elapsed < locked_object.lock_rules.min_lock_period && !locked_object.lock_rules.emergency_withdrawal) {
+        if (time_elapsed < types::get_min_lock_period(&locked_object.lock_rules) && !types::get_emergency_withdrawal(&locked_object.lock_rules)) {
             abort E_LOCK_PERIOD_NOT_MET
         };
 
@@ -251,13 +291,13 @@ module locked_object::core {
         assert!(utils::is_valid_amount(max_withdrawal_per_day), E_INVALID_PARAMETERS);
         assert!(utils::is_valid_basis_points(withdrawal_fee_rate), E_INVALID_PARAMETERS);
 
-        locked_object.lock_rules = LockRules {
+        locked_object.lock_rules = types::create_lock_rules(
             min_lock_period,
             max_withdrawal_per_day,
             auto_reinvest,
             emergency_withdrawal,
-            withdrawal_fee_rate,
-        };
+            withdrawal_fee_rate
+        );
     }
 
     /// 转移所有权

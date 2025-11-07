@@ -1,3 +1,4 @@
+#[allow(unused_use,duplicate_alias,unused_const,unused_variable,lint(self_transfer))]
 module locked_object::authorization {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};

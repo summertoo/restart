@@ -54,7 +54,34 @@ module locked_object::types {
         DepositRecord {
             timestamp,
             amount,
-            depositor,
+            depositor
         }
+    }
+
+    // === LockRules 访问器函数 ===
+
+    /// 获取最小锁仓时间
+    public fun get_min_lock_period(rules: &LockRules): u64 {
+        rules.min_lock_period
+    }
+
+    /// 获取每日最大提取限额
+    public fun get_max_withdrawal_per_day(rules: &LockRules): u64 {
+        rules.max_withdrawal_per_day
+    }
+
+    /// 获取是否自动再投资
+    public fun get_auto_reinvest(rules: &LockRules): bool {
+        rules.auto_reinvest
+    }
+
+    /// 获取是否允许紧急提取
+    public fun get_emergency_withdrawal(rules: &LockRules): bool {
+        rules.emergency_withdrawal
+    }
+
+    /// 获取提取手续费率
+    public fun get_withdrawal_fee_rate(rules: &LockRules): u64 {
+        rules.withdrawal_fee_rate
     }
 }
