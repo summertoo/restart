@@ -30,6 +30,7 @@ Thumbs.db
 
 # Local project directory
 local/
+graph/
 
 # Logs
 logs
@@ -89,3 +90,7 @@ jspm_packages/
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+
+# 批处理
+*.bat
+*.ssh

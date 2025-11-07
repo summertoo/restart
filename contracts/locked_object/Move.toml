@@ -1,0 +1,13 @@
+[package]
+name = "locked_object"
+version = "0.0.1"
+edition = "2024.beta"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "testnet-v1.60.0" }
+
+[addresses]
+locked_object = "0x0"
+
+[dev-addresses]
+# locked_object = "0x1"
