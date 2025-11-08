@@ -6,11 +6,15 @@ module locked_object::tests {
     use sui::sui::SUI;
     use sui::coin;
     use locked_object::core::{Self, LockedObject};
+    use std::debug::{Self,print};
+    use std::string::{Self,utf8,String};
+
 
     const ADMIN: address = @0x1;
 
     #[test]
     fun test_create_locked_object() {
+        print(&utf8(b"test_create_locked_object start"));
         let mut scenario = test_scenario::begin(ADMIN);
         let scenario_val = &mut scenario;
         

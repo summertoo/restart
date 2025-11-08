@@ -4,9 +4,12 @@ module locked_object::module_import_test {
     use locked_object::core::{Self, LockedObject};
     use sui::test_scenario;
     use sui::sui::SUI;
-
+    use std::debug::{Self,print};
+    use std::string::{Self,utf8,String};
+    
     #[test]
     fun test_module_import() {
+        print(&utf8(b"import start"));
         let mut scenario = test_scenario::begin(@0x1);
         let scenario_val = &mut scenario;
         
