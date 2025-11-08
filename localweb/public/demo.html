@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>restart - Sui 自锁仓平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-gray-900 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold">restart</h1>
+                <div id="wallet-section">
+                    <button onclick="connectWallet()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                        连接钱包
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Hero Section -->
+            <section class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-gray-800 mb-4">
+                    欢迎使用 Restart 自锁仓平台
+                </h2>
+                <p class="text-xl text-gray-600 mb-8">
+                    基于 Sui 区块链的去中心化自锁仓解决方案
+                </p>
+            </section>
+
+            <!-- Create Locked Object Section -->
+            <section class="mb-12">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">创建自锁对象</h2>
+                    
+                    <div id="message" class="hidden mb-4 p-4 rounded-lg"></div>
+
+                    <form onsubmit="createLockedObject(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                对象名称
+                            </label>
+                            <input
+                                type="text"
+                                id="name"
+                                required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="输入对象名称"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                描述信息
+                            </label>
+                            <textarea
+                                id="description"
+                                required
+                                rows="3"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="输入描述信息"
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                最小锁仓时间 (秒)
+                            </label>
+                            <input
+                                type="number"
+                                id="minLockPeriod"
+                                value="86400"
+                                required
+                                min="1"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="86400 (24小时)"
+                            />
+                            <p class="text-xs text-gray-500 mt-1">86400秒 = 24小时</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                每日最大提取限额 (MIST)
+                            </label>
+                            <input
+                                type="number"
+                                id="maxWithdrawalPerDay"
+                                value="1000000000"
+                                required
+                                min="0"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="1000000000 (1 SUI)"
+                            />
+                            <p class="text-xs text-gray-500 mt-1">1 SUI = 1,000,000,000 MIST</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                提取手续费率 (基点)
+                            </label>
+                            <input
+                                type="number"
+                                id="withdrawalFeeRate"
+                                value="100"
+                                required
+                                min="0"
+                                max="10000"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="100 (1%)"
+                            />
+                            <p class="text-xs text-gray-500 mt-1">100基点 = 1%</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="autoReinvest"
+                                    class="mr-2"
+                                />
+                                <span class="text-sm text-gray-700">自动再投资</span>
+                            </label>
+
+                            <label class="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="emergencyWithdrawal"
+                                    class="mr-2"
+                                />
+                                <span class="text-sm text-gray-700">允许紧急提取</span>
+                            </label>
+                        </div>
+
+                        <button
+                            type="submit"
+                            id="submitBtn"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                        >
+                            创建自锁对象
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Features Section -->
+            <section class="grid md:grid-cols-3 gap-6 mb-12">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="text-blue-600 text-3xl mb-4">🔒</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">安全锁仓</h3>
+                    <p class="text-gray-600">
+                        使用智能合约确保资金安全，支持自定义锁仓时间和提取规则
+                    </p>
+                </div>
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="text-green-600 text-3xl mb-4">⚡</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">快速交易</h3>
+                    <p class="text-gray-600">
+                        基于 Sui 高性能区块链，交易确认速度快，手续费低
+                    </p>
+                </div>
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="text-purple-600 text-3xl mb-4">🛡️</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">灵活控制</h3>
+                    <p class="text-gray-600">
+                        支持紧急提取、自动再投资等高级功能，满足不同需求
+                    </p>
+                </div>
+            </section>
+
+            <!-- Info Section -->
+            <section class="bg-blue-50 rounded-lg p-6 text-center">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">关于 Sui 测试网</h3>
+                <p class="text-gray-600 mb-4">
+                    当前应用连接到 Sui 测试网络，所有交易使用测试代币，无实际价值。
+                </p>
+                <div class="flex justify-center space-x-4 text-sm text-gray-500">
+                    <span>网络: Sui Testnet</span>
+                    <span>•</span>
+                    <span>代币: SUI</span>
+                    <span>•</span>
+                    <span>状态: 测试环境</span>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400">
+                © 2024 Restart. 基于 Sui 区块链构建的去中心化应用
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        let isConnected = false;
+        let currentAccount = null;
+        let balance = '0';
+
+        function formatBalance(balance) {
+            const mist = parseInt(balance);
+            const sui = mist / 1000000000;
+            return sui.toFixed(4);
+        }
+
+        function formatAddress(address) {
+            return `${address.slice(0, 6)}...${address.slice(-4)}`;
+        }
+
+        function showMessage(type, text) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `mb-4 p-4 rounded-lg ${
+                type === 'success' 
+                    ? 'bg-green-100 border border-green-400 text-green-700' 
+                    : 'bg-red-100 border border-red-400 text-red-700'
+            }`;
+            messageEl.classList.remove('hidden');
+            
+            setTimeout(() => {
+                messageEl.classList.add('hidden');
+            }, 5000);
+        }
+
+        function connectWallet() {
+            const walletSection = document.getElementById('wallet-section');
+            
+            // 模拟钱包连接
+            const mockAddress = '0x' + Math.random().toString(16).substr(2, 40);
+            currentAccount = mockAddress;
+            isConnected = true;
+            balance = '1000000000'; // 1 SUI in MIST
+
+            walletSection.innerHTML = `
+                <div class="flex items-center space-x-4 bg-gray-800 p-4 rounded-lg">
+                    <div class="text-white">
+                        <div class="text-sm text-gray-400">钱包地址</div>
+                        <div class="font-mono text-sm">${formatAddress(currentAccount)}</div>
+                    </div>
+                    <div class="text-white">
+                        <div class="text-sm text-gray-400">余额</div>
+                        <div class="font-bold">${formatBalance(balance)} SUI</div>
+                    </div>
+                    <button onclick="fetchBalance()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded text-sm transition-colors">
+                        刷新
+                    </button>
+                    <button onclick="disconnectWallet()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded text-sm transition-colors">
+                        断开
+                    </button>
+                </div>
+            `;
+            
+            showMessage('success', '钱包连接成功！');
+        }
+
+        function disconnectWallet() {
+            const walletSection = document.getElementById('wallet-section');
+            isConnected = false;
+            currentAccount = null;
+            balance = '0';
+
+            walletSection.innerHTML = `
+                <button onclick="connectWallet()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                    连接钱包
+                </button>
+            `;
+            
+            showMessage('success', '钱包已断开连接');
+        }
+
+        function fetchBalance() {
+            // 模拟获取余额
+            const mockBalance = Math.floor(Math.random() * 10000000000).toString();
+            balance = mockBalance;
+            
+            // 更新显示
+            const walletSection = document.getElementById('wallet-section');
+            const balanceEl = walletSection.querySelector('.font-bold');
+            if (balanceEl) {
+                balanceEl.textContent = `${formatBalance(balance)} SUI`;
+            }
+            
+            showMessage('success', '余额已刷新');
+        }
+
+        async function createLockedObject(event) {
+            event.preventDefault();
+            
+            if (!isConnected) {
+                showMessage('error', '请先连接钱包');
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            
+            try {
+                submitBtn.textContent = '创建中...';
+                submitBtn.disabled = true;
+
+                const name = document.getElementById('name').value;
+                const description = document.getElementById('description').value;
+                const minLockPeriod = document.getElementById('minLockPeriod').value;
+
+                // 模拟创建自锁对象
+                console.log('Creating locked object:', { name, description, minLockPeriod });
+                
+                // 模拟交易延迟
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const objectId = '0x' + Math.random().toString(16).substr(2, 64);
+                
+                showMessage('success', `自锁对象创建成功！对象ID: ${objectId.slice(0, 10)}...`);
+                
+                // 重置表单
+                document.getElementById('name').value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('minLockPeriod').value = '86400';
+                document.getElementById('maxWithdrawalPerDay').value = '1000000000';
+                document.getElementById('withdrawalFeeRate').value = '100';
+                document.getElementById('autoReinvest').checked = false;
+                document.getElementById('emergencyWithdrawal').checked = false;
+                
+            } catch (error) {
+                showMessage('error', `创建失败: ${error.message}`);
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

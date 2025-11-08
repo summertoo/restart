@@ -1,6 +1,7 @@
-# restart 0.1
+# restart 0.1.1
 
 # Sui 智能合约项目 - 自锁仓系统
+![demo](./doc/img/restardemo.jpg)
 
 ## 项目概述
 
